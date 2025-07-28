@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="70dp"
+    android:layout_height="70dp">
+    
+    <ImageButton
+        android:id="@+id/floatingButton"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_gravity="center"
+        android:background="@drawable/floating_button_background"
+        android:src="@drawable/ic_mic"
+        android:contentDescription="음성 인식 버튼"
+        android:scaleType="centerInside"
+        android:padding="8dp" />
+        
+    <ImageButton
+        android:id="@+id/closeButton"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_gravity="top|end"
+        android:background="@drawable/close_button_background"
+        android:src="@drawable/ic_close"
+        android:contentDescription="닫기 버튼"
+        android:scaleType="centerInside"
+        android:padding="2dp" />
+        
+</FrameLayout> 

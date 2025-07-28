@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_service_description">LLM 음성 비서 프로토타입의 접근성 서비스입니다. 화면 요소를 감지하고 가상 터치를 수행합니다.</string>
+    <string name="app_name">LLM 음성 비서</string>
+</resources> 

@@ -3,16 +3,25 @@ package com.example.llm_voice_assistant
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import android.content.Context
 import android.content.Intent
-import android.util.Log
+import android.provider.Settings
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings.Secure
 import android.media.MediaRecorder
+import android.media.MediaPlayer
 import java.io.File
+import java.io.IOException
+import java.text.SimpleDateFormat
+import java.util.*
 
-class MainActivity : FlutterActivity() {
+class MainActivity: FlutterActivity() {
     private val CHANNEL = "voice_assistant_channel"
     private var mediaRecorder: MediaRecorder? = null
     private var recordingFile: File? = null
-    
+    private var isRecording = false
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         
@@ -24,33 +33,38 @@ class MainActivity : FlutterActivity() {
                 "stopRecording" -> {
                     stopRecording(result)
                 }
-                "startBackgroundService" -> {
-                    startBackgroundService()
-                    result.success("백그라운드 서비스 시작됨")
-                }
-                "stopBackgroundService" -> {
-                    stopBackgroundService()
-                    result.success("백그라운드 서비스 중지됨")
-                }
-                "performVirtualTouch" -> {
-                    val x = call.argument<Double>("x") ?: 0.0
-                    val y = call.argument<Double>("y") ?: 0.0
-                    performVirtualTouch(x.toFloat(), y.toFloat())
-                    result.success("가상 터치 실행됨")
-                }
                 "performScroll" -> {
                     val direction = call.argument<String>("direction") ?: "down"
-                    performScroll(direction)
-                    result.success("스크롤 실행됨")
+                    val scrollAmount = call.argument<Int>("scrollAmount") ?: 300
+                    
+                    MyAccessibilityService.instance?.performScroll(direction, scrollAmount)
+                    result.success(true)
                 }
-                "performType" -> {
+                "performVirtualTouch" -> {
+                    val x = call.argument<Double>("x")?.toFloat() ?: 0f
+                    val y = call.argument<Double>("y")?.toFloat() ?: 0f
+                    
+                    MyAccessibilityService.instance?.performTouch(x, y)
+                    result.success(true)
+                }
+                "performTextInput" -> {
                     val text = call.argument<String>("text") ?: ""
-                    performType(text)
-                    result.success("텍스트 입력 실행됨")
+                    
+                    MyAccessibilityService.instance?.performTextInput(text)
+                    result.success(true)
                 }
-                "checkAccessibilityService" -> {
-                    val isEnabled = checkAccessibilityService()
+                "checkAccessibilityServiceStatus" -> {
+                    val isEnabled = isAccessibilityServiceEnabled()
                     result.success(isEnabled)
+                }
+                "setHintEnabled" -> {
+                    val enabled = call.argument<Boolean>("enabled") ?: false
+                    MyAccessibilityService.instance?.setHintEnabled(enabled)
+                    result.success(true)
+                }
+                "openAccessibilitySettings" -> {
+                    openAccessibilitySettings()
+                    result.success(true)
                 }
                 else -> {
                     result.notImplemented()
@@ -58,127 +72,89 @@ class MainActivity : FlutterActivity() {
             }
         }
     }
-    
+
     private fun startRecording(result: MethodChannel.Result) {
         try {
-            val tempDir = File(cacheDir, "recordings")
-            if (!tempDir.exists()) {
-                tempDir.mkdirs()
+            if (isRecording) {
+                result.error("ALREADY_RECORDING", "이미 녹음 중입니다.", null)
+                return
             }
+
+            // 녹음 파일 생성
+            val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            recordingFile = File(externalCacheDir, "recording_$timestamp.m4a")
             
-            recordingFile = File(tempDir, "voice_recording.m4a")
-            
+            // MediaRecorder 설정
             mediaRecorder = MediaRecorder().apply {
                 setAudioSource(MediaRecorder.AudioSource.MIC)
                 setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
                 setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-                setAudioSamplingRate(44100)  // 더 높은 샘플링 레이트
+                setAudioSamplingRate(44100)
                 setAudioChannels(1)
-                setAudioEncodingBitRate(256000)  // 더 높은 비트레이트
+                setAudioEncodingBitRate(256000)
                 setOutputFile(recordingFile!!.absolutePath)
             }
-            
+
+            // 녹음 시작
             mediaRecorder?.prepare()
             mediaRecorder?.start()
-            
-            Log.d("MainActivity", "녹음 시작: ${recordingFile!!.absolutePath}")
-            result.success("녹음 시작됨")
-            
+            isRecording = true
+
+            result.success(true)
         } catch (e: Exception) {
-            Log.e("MainActivity", "녹음 시작 오류: ${e.message}")
-            result.error("RECORDING_ERROR", "녹음 시작 실패", e.message)
+            result.error("RECORDING_ERROR", "녹음 시작 실패: ${e.message}", null)
         }
     }
-    
+
     private fun stopRecording(result: MethodChannel.Result) {
         try {
+            if (!isRecording) {
+                result.error("NOT_RECORDING", "녹음 중이 아닙니다.", null)
+                return
+            }
+
+            // 녹음 중지
             mediaRecorder?.apply {
                 stop()
                 release()
             }
             mediaRecorder = null
-            
+            isRecording = false
+
+            // 결과 반환
             val fileSize = recordingFile?.length() ?: 0
-            val filePath = recordingFile?.absolutePath ?: ""
-            
-            Log.d("MainActivity", "녹음 중지: $filePath (크기: $fileSize bytes)")
-            
-            result.success(mapOf(
+            val resultMap = mapOf(
                 "success" to true,
-                "filePath" to filePath,
+                "filePath" to (recordingFile?.absolutePath ?: ""),
                 "fileSize" to fileSize
-            ))
-            
+            )
+
+            result.success(resultMap)
         } catch (e: Exception) {
-            Log.e("MainActivity", "녹음 중지 오류: ${e.message}")
-            result.error("RECORDING_ERROR", "녹음 중지 실패", e.message)
+            result.error("STOP_RECORDING_ERROR", "녹음 중지 실패: ${e.message}", null)
         }
     }
-    
-    private fun startBackgroundService() {
-        val intent = Intent(this, BackgroundService::class.java)
-        startForegroundService(intent)
-        Log.d("MainActivity", "백그라운드 서비스 시작")
-    }
-    
-    private fun stopBackgroundService() {
-        val intent = Intent(this, BackgroundService::class.java)
-        stopService(intent)
-        Log.d("MainActivity", "백그라운드 서비스 중지")
-    }
-    
-    private fun performVirtualTouch(x: Float, y: Float) {
-        Log.d("MainActivity", "가상 터치 호출됨: ($x, $y)")
+
+    private fun isAccessibilityServiceEnabled(): Boolean {
+        val accessibilityEnabled = Settings.Secure.getInt(
+            contentResolver,
+            Settings.Secure.ACCESSIBILITY_ENABLED, 0
+        )
         
-        val accessibilityService = MyAccessibilityService.getInstance()
-        if (accessibilityService != null) {
-            Log.d("MainActivity", "접근성 서비스 인스턴스 찾음, 가상 터치 실행 중...")
-            accessibilityService.performVirtualTouch(x, y)
-            Log.d("MainActivity", "가상 터치 실행 완료: ($x, $y)")
-        } else {
-            Log.e("MainActivity", "접근성 서비스가 비활성화되어 가상 터치를 실행할 수 없습니다.")
+        if (accessibilityEnabled == 1) {
+            val service = "${packageName}/.MyAccessibilityService"
+            val settingValue = Settings.Secure.getString(
+                contentResolver,
+                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+            )
+            return settingValue?.contains(service) == true
         }
-    }
-    
-    private fun checkAccessibilityService(): Boolean {
-        try {
-            // 접근성 서비스 상태 확인
-            val accessibilityService = MyAccessibilityService.getInstance()
-            val isEnabled = accessibilityService != null
-            
-            // 추가 검증: 실제로 서비스가 활성화되어 있는지 확인
-            if (isEnabled) {
-                Log.d("MainActivity", "접근성 서비스 활성화됨")
-            } else {
-                Log.w("MainActivity", "접근성 서비스 비활성화됨 - 설정에서 활성화 필요")
-            }
-            
-            return isEnabled
-        } catch (e: Exception) {
-            Log.e("MainActivity", "접근성 서비스 확인 오류: ${e.message}")
-            return false
-        }
+        return false
     }
 
-    // 스크롤 액션 실행
-    private fun performScroll(direction: String) {
-        val accessibilityService = MyAccessibilityService.getInstance()
-        if (accessibilityService != null) {
-            accessibilityService.performScroll(direction)
-            Log.d("MainActivity", "스크롤 실행: $direction")
-        } else {
-            Log.e("MainActivity", "접근성 서비스가 비활성화되어 스크롤을 실행할 수 없습니다.")
-        }
-    }
-
-    // 텍스트 입력 액션 실행
-    private fun performType(text: String) {
-        val accessibilityService = MyAccessibilityService.getInstance()
-        if (accessibilityService != null) {
-            accessibilityService.performType(text)
-            Log.d("MainActivity", "텍스트 입력 실행: $text")
-        } else {
-            Log.e("MainActivity", "접근성 서비스가 비활성화되어 텍스트 입력을 실행할 수 없습니다.")
-        }
+    private fun openAccessibilitySettings() {
+        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        startActivity(intent)
     }
 }

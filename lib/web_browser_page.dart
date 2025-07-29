@@ -18,12 +18,36 @@ class _WebBrowserPageState extends State<WebBrowserPage> {
   String currentPageContent = 'Google 홈페이지가 로드되었습니다.';
 
   final List<Map<String, String>> popularSites = [
-    {'name': 'Google', 'url': 'https://www.google.com', 'content': 'Google 검색 페이지입니다.'},
-    {'name': 'YouTube', 'url': 'https://www.youtube.com', 'content': 'YouTube 동영상 페이지입니다.'},
-    {'name': 'Naver', 'url': 'https://www.naver.com', 'content': 'Naver 포털 페이지입니다.'},
-    {'name': 'GitHub', 'url': 'https://www.github.com', 'content': 'GitHub 개발자 플랫폼입니다.'},
-    {'name': 'Stack Overflow', 'url': 'https://stackoverflow.com', 'content': 'Stack Overflow 개발자 커뮤니티입니다.'},
-    {'name': 'Wikipedia', 'url': 'https://www.wikipedia.org', 'content': 'Wikipedia 백과사전입니다.'},
+    {
+      'name': 'Google',
+      'url': 'https://www.google.com',
+      'content': 'Google 검색 페이지입니다.',
+    },
+    {
+      'name': 'YouTube',
+      'url': 'https://www.youtube.com',
+      'content': 'YouTube 동영상 페이지입니다.',
+    },
+    {
+      'name': 'Naver',
+      'url': 'https://www.naver.com',
+      'content': 'Naver 포털 페이지입니다.',
+    },
+    {
+      'name': 'GitHub',
+      'url': 'https://www.github.com',
+      'content': 'GitHub 개발자 플랫폼입니다.',
+    },
+    {
+      'name': 'Stack Overflow',
+      'url': 'https://stackoverflow.com',
+      'content': 'Stack Overflow 개발자 커뮤니티입니다.',
+    },
+    {
+      'name': 'Wikipedia',
+      'url': 'https://www.wikipedia.org',
+      'content': 'Wikipedia 백과사전입니다.',
+    },
   ];
 
   @override
@@ -45,11 +69,9 @@ class _WebBrowserPageState extends State<WebBrowserPage> {
     try {
       // 백엔드 서버로 음성 명령 전송
       final response = await http.post(
-        Uri.parse('http://192.168.219.109:8000/process_voice'),
+        Uri.parse('http://192.168.0.171:8000/process_voice'),
         headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'command': command,
-        }),
+        body: json.encode({'command': command}),
       );
 
       if (response.statusCode == 200) {
@@ -59,7 +81,10 @@ class _WebBrowserPageState extends State<WebBrowserPage> {
         });
 
         // AI 응답에 따른 웹페이지 제어
-        _executeWebCommand(data['action'] ?? 'navigate', data['parameters'] ?? {});
+        _executeWebCommand(
+          data['action'] ?? 'navigate',
+          data['parameters'] ?? {},
+        );
       }
     } catch (e) {
       setState(() {
@@ -187,7 +212,7 @@ class _WebBrowserPageState extends State<WebBrowserPage> {
               },
             ),
           ),
-          
+
           // 음성 인식 결과 표시
           if (recognizedText.isNotEmpty || aiResponse.isNotEmpty)
             Container(
@@ -197,15 +222,19 @@ class _WebBrowserPageState extends State<WebBrowserPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (recognizedText.isNotEmpty)
-                    Text('음성 인식: $recognizedText', 
-                         style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text(
+                      '음성 인식: $recognizedText',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   if (aiResponse.isNotEmpty)
-                    Text('AI 응답: $aiResponse', 
-                         style: const TextStyle(color: Colors.blue)),
+                    Text(
+                      'AI 응답: $aiResponse',
+                      style: const TextStyle(color: Colors.blue),
+                    ),
                 ],
               ),
             ),
-          
+
           // 웹페이지 시뮬레이션
           Expanded(
             child: Container(
@@ -237,7 +266,7 @@ class _WebBrowserPageState extends State<WebBrowserPage> {
                       ],
                     ),
                   ),
-                  
+
                   // 웹페이지 콘텐츠
                   Expanded(
                     child: Container(
@@ -289,10 +318,10 @@ class _WebBrowserPageState extends State<WebBrowserPage> {
     setState(() {
       isListening = true;
     });
-    
+
     // 시뮬레이션용 - 실제로는 음성 인식 결과를 받아옴
     Future.delayed(const Duration(seconds: 2), () {
       _processVoiceCommand('구글 검색창에 안드로이드 개발 입력해줘');
     });
   }
-} 
+}

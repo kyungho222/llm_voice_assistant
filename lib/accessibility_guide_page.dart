@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:provider/provider.dart';
+import 'main.dart';
 
 class AccessibilityGuidePage extends StatefulWidget {
   const AccessibilityGuidePage({Key? key}) : super(key: key);
@@ -20,7 +22,7 @@ class _AccessibilityGuidePageState extends State<AccessibilityGuidePage> {
 
   Future<void> _checkPermissions() async {
     final overlayStatus = await Permission.systemAlertWindow.status;
-    
+
     setState(() {
       // 접근성 서비스는 앱에서 직접 확인할 수 없으므로 시뮬레이션
       isAccessibilityEnabled = false; // 실제로는 네이티브 코드로 확인 필요
@@ -32,7 +34,7 @@ class _AccessibilityGuidePageState extends State<AccessibilityGuidePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('접근성 서비스 설정'),
+        title: const Text('설정'),
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
       ),
@@ -41,6 +43,66 @@ class _AccessibilityGuidePageState extends State<AccessibilityGuidePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 힌트 활성화 설정
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.lightbulb_outline,
+                          color: Colors.orange,
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'UI 힌트',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      '터치 가능한 버튼들에 음성 명령 키워드를 표시합니다.',
+                      style: TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 16),
+                    Consumer<HintProvider>(
+                      builder: (context, hintProvider, child) {
+                        return SwitchListTile(
+                          title: const Text('힌트 활성화'),
+                          subtitle: const Text('터치 가능한 버튼에 음성 명령 키워드 표시'),
+                          value: hintProvider.isHintEnabled,
+                          onChanged: (value) {
+                            hintProvider.setHintEnabled(value);
+                            // 오버레이 힌트도 함께 제어
+                            context
+                                .read<VoiceAssistantProvider>()
+                                .setHintEnabled(value);
+                          },
+                          secondary: Icon(
+                            hintProvider.isHintEnabled
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                            color: hintProvider.isHintEnabled
+                                ? Colors.blue
+                                : Colors.grey,
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
             // 접근성 서비스 설정
             Card(
               child: Padding(
@@ -51,23 +113,32 @@ class _AccessibilityGuidePageState extends State<AccessibilityGuidePage> {
                     Row(
                       children: [
                         Icon(
-                          isAccessibilityEnabled ? Icons.check_circle : Icons.error,
-                          color: isAccessibilityEnabled ? Colors.green : Colors.red,
+                          isAccessibilityEnabled
+                              ? Icons.check_circle
+                              : Icons.error,
+                          color: isAccessibilityEnabled
+                              ? Colors.green
+                              : Colors.red,
                         ),
                         const SizedBox(width: 8),
                         const Text(
                           '접근성 서비스',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      isAccessibilityEnabled 
-                        ? '✅ 접근성 서비스가 활성화되어 있습니다.'
-                        : '❌ 접근성 서비스가 비활성화되어 있습니다.',
+                      isAccessibilityEnabled
+                          ? '✅ 접근성 서비스가 활성화되어 있습니다.'
+                          : '❌ 접근성 서비스가 비활성화되어 있습니다.',
                       style: TextStyle(
-                        color: isAccessibilityEnabled ? Colors.green : Colors.red,
+                        color: isAccessibilityEnabled
+                            ? Colors.green
+                            : Colors.red,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -95,9 +166,9 @@ class _AccessibilityGuidePageState extends State<AccessibilityGuidePage> {
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // 오버레이 권한 설정
             Card(
               child: Padding(
@@ -114,15 +185,18 @@ class _AccessibilityGuidePageState extends State<AccessibilityGuidePage> {
                         const SizedBox(width: 8),
                         const Text(
                           '오버레이 권한',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      isOverlayEnabled 
-                        ? '✅ 오버레이 권한이 허용되어 있습니다.'
-                        : '❌ 오버레이 권한이 거부되어 있습니다.',
+                      isOverlayEnabled
+                          ? '✅ 오버레이 권한이 허용되어 있습니다.'
+                          : '❌ 오버레이 권한이 거부되어 있습니다.',
                       style: TextStyle(
                         color: isOverlayEnabled ? Colors.green : Colors.red,
                         fontWeight: FontWeight.bold,
@@ -152,9 +226,9 @@ class _AccessibilityGuidePageState extends State<AccessibilityGuidePage> {
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // 기능 설명
             Card(
               child: Padding(
@@ -164,7 +238,10 @@ class _AccessibilityGuidePageState extends State<AccessibilityGuidePage> {
                   children: [
                     const Text(
                       '🔧 필요한 권한 설명',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     const Text(
@@ -186,9 +263,9 @@ class _AccessibilityGuidePageState extends State<AccessibilityGuidePage> {
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // 테스트 버튼
             Card(
               child: Padding(
@@ -198,7 +275,10 @@ class _AccessibilityGuidePageState extends State<AccessibilityGuidePage> {
                   children: [
                     const Text(
                       '🧪 권한 테스트',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     Row(
@@ -211,12 +291,13 @@ class _AccessibilityGuidePageState extends State<AccessibilityGuidePage> {
                                 SnackBar(
                                   content: Text(
                                     isAccessibilityEnabled && isOverlayEnabled
-                                      ? '모든 권한이 정상적으로 설정되었습니다!'
-                                      : '일부 권한이 설정되지 않았습니다.',
+                                        ? '모든 권한이 정상적으로 설정되었습니다!'
+                                        : '일부 권한이 설정되지 않았습니다.',
                                   ),
-                                  backgroundColor: isAccessibilityEnabled && isOverlayEnabled
-                                    ? Colors.green
-                                    : Colors.orange,
+                                  backgroundColor:
+                                      isAccessibilityEnabled && isOverlayEnabled
+                                      ? Colors.green
+                                      : Colors.orange,
                                 ),
                               );
                             },
@@ -243,4 +324,4 @@ class _AccessibilityGuidePageState extends State<AccessibilityGuidePage> {
       ),
     );
   }
-} 
+}
